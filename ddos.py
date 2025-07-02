@@ -1,4 +1,5 @@
 import argparse
+import multiprocessing
 
 SOCK_BUFFER_SIZE = 1024 * 1024  # 1 MB
 MAX_UDP_PACKET_SIZE = 65507  # Max size for UDP
@@ -52,3 +53,19 @@ def main():
             protocols = ['TCP', 'UDP', 'ICMP', 'HTTPS', 'HTTP']
             for protocol in protocols:
                 ports[protocol] = port_list if protocol != 'ICMP' else [0]
+    else:
+        if args.T: protocols.append('TCP')
+        if args.U: protocols.append('UDP')
+        if args.I: protocols.append('ICMP')
+        if args.H: protocols.append('HTTP')
+        if args.S: protocols.append('HTTPS')
+
+        if args.p:
+            for protocol in protocols:
+                ports[protocol] = parse_ports(args.p)
+
+    for protocol in protocols:
+        for port in ports.get(protocol, []):
+            processes = []
+            for _ in range(num_processes):
+                pass
