@@ -1,11 +1,25 @@
 import argparse
 import multiprocessing
 import os
+import random
+import platform
+import psutil
+import asyncio
 
 SOCK_BUFFER_SIZE = 1024 * 1024  # 1 MB
 MAX_UDP_PACKET_SIZE = 65507  # Max size for UDP
 MAX_TCP_PACKET_SIZE = 1024 * 1024  # 1MB for TCP
 MAX_HTTP_PACKET_SIZE = 1024  # 1KB for HTTP(S)
+
+def setup_uvloop():
+    if platform.system() != 'Windows':
+        try:
+            import uvloop
+            asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+        except ImportError:
+            pass
+        except Exception as e:
+            print(f"[ERROR] Unable to set up uvloop: {e}")
 
 def randomize_cpu_affinity():
     current_pid = os.getpid()
@@ -14,12 +28,31 @@ def randomize_cpu_affinity():
         if not cpu_count:
             print("[WARNING] Unable to determine the number of CPUs.")
             return
-    except:
-        pass
+        cpu_ids = random.sample(range(cpu_count), random.randint(1, cpu_count))
+        if platform.system() in ['Linux', 'Android']:
+            cpu_mask = sum(1 << cpu for cpu in cpu_ids)
+            os.system(f'taskset -p {cpu_mask} {current_pid}')
+            print(f"[INFO] Set CPU affinity mask to: {cpu_mask}")
+        elif platform.system() == 'Windows':
+            psutil.Process(current_pid).cpu_affinity(cpu_ids)
+            print(f"[INFO] Set CPU affinity to: {cpu_ids}")
+        else:
+            print(f"[WARNING] CPU not supported {platform.system()}")
+    except psutil.AccessDenied:
+        # временное решение, я бы попробовал переписать права доступ на чтение
+        # либо вообще прямо chmod
+        # либо с обходом переходить в user/lib или opt и сделать иньекцию чтоб получить sudo права
+        print("[ERROR] Access denied to set CPU affinity. Run with elevated permissions.")
+    except Exception as e:
+        print(f"[ERROR] Exception occurred while setting CPU affinity: {e}")
 
 
 def run_ip_info(ip_address, port, num_processes, num_threads_per_process, protocol, packet_size):
-    pass
+    randomize_cpu_affinity()
+    setup_uvloop()
+
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
 
 def parse_ports(port_input):
     """Parse a port input as single, range, or multiple ports."""
