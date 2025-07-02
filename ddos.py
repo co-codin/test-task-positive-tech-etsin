@@ -5,6 +5,21 @@ MAX_UDP_PACKET_SIZE = 65507  # Max size for UDP
 MAX_TCP_PACKET_SIZE = 1024 * 1024  # 1MB for TCP
 MAX_HTTP_PACKET_SIZE = 1024  # 1KB for HTTP(S)
 
+
+def parse_ports(port_input):
+    """Parse a port input as single, range, or multiple ports."""
+    try:
+        if '-' in port_input:
+            start, end = map(int, port_input.split('-'))
+            return list(range(start, end + 1))
+        elif ',' in port_input:
+            return list(map(int, port_input.split(',')))
+        else:
+            return [int(port_input)]
+    except ValueError as e:
+        print(f"[ERROR] Exception parsing ports: {e}")
+        return []
+
 def main():
     parser = argparse.ArgumentParser(
         description='ddos',
@@ -21,3 +36,19 @@ def main():
     parser.add_argument('-pr', default=30, type=int, help='Number of processes to run in parallel')
     parser.add_argument('-t', default=40, type=int, help='Number of threads per process')
     parser.add_argument('-ps', default=MAX_UDP_PACKET_SIZE, type=int, help='Packet size for the stress test')
+
+    args = parser.parse_args()
+    ip_address = args.ip
+    num_processes = args.pr
+    num_threads_per_process = args.t
+    packet_size = args.ps
+
+    protocols = []
+    ports = {}
+
+    if args.A:
+        if args.p:
+            port_list = parse_ports(args.p)
+            protocols = ['TCP', 'UDP', 'ICMP', 'HTTPS', 'HTTP']
+            for protocol in protocols:
+                ports[protocol] = port_list if protocol != 'ICMP' else [0]
