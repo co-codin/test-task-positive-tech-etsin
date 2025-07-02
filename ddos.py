@@ -6,6 +6,8 @@ MAX_UDP_PACKET_SIZE = 65507  # Max size for UDP
 MAX_TCP_PACKET_SIZE = 1024 * 1024  # 1MB for TCP
 MAX_HTTP_PACKET_SIZE = 1024  # 1KB for HTTP(S)
 
+def run_ip_info(ip_address, port, num_processes, num_threads_per_process, protocol, packet_size):
+    pass
 
 def parse_ports(port_input):
     """Parse a port input as single, range, or multiple ports."""
@@ -68,4 +70,14 @@ def main():
         for port in ports.get(protocol, []):
             processes = []
             for _ in range(num_processes):
-                pass
+                process = multiprocessing.Process(
+                    target=run_ip_info,
+                    args=(ip_address, port, num_processes, num_threads_per_process, protocol, packet_size)
+                )
+                process.start()
+                processes.append(process)
+            for process in processes:
+                process.join()
+
+if __name__ == "__main__":
+    main()
