@@ -1,10 +1,22 @@
 import argparse
 import multiprocessing
+import os
 
 SOCK_BUFFER_SIZE = 1024 * 1024  # 1 MB
 MAX_UDP_PACKET_SIZE = 65507  # Max size for UDP
 MAX_TCP_PACKET_SIZE = 1024 * 1024  # 1MB for TCP
 MAX_HTTP_PACKET_SIZE = 1024  # 1KB for HTTP(S)
+
+def randomize_cpu_affinity():
+    current_pid = os.getpid()
+    try:
+        cpu_count = os.cpu_count()
+        if not cpu_count:
+            print("[WARNING] Unable to determine the number of CPUs.")
+            return
+    except:
+        pass
+
 
 def run_ip_info(ip_address, port, num_processes, num_threads_per_process, protocol, packet_size):
     pass
